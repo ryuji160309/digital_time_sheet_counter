@@ -27,7 +27,6 @@
             box-sizing: border-box;
         }
 
-        /* --- 操作パネル --- */
         .controls-panel {
             background: #fff; padding: 15px 20px; margin-bottom: 15px; border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 12px; flex-shrink: 0;
@@ -85,7 +84,7 @@
         #timesheet-wrapper { flex-grow: 1; overflow-x: auto; overflow-y: auto; padding-bottom: 100px; }
         #timesheet-container { display: inline-flex; gap: 40px; align-items: flex-start; }
 
-        .cut-container { display: inline-flex; gap: 40px; align-items: stretch; }
+        .cut-container { display: inline-flex; gap: 40px; }
 
         .page {
             background-color: var(--sheet-bg); color: var(--sheet-line); padding: 20px 30px; box-shadow: 2px 2px 10px rgba(0,0,0,0.15);
@@ -136,20 +135,8 @@
         .border-6frames td { border-bottom: 2px solid var(--sheet-line); }
         .border-1second td { border-bottom: 3px solid var(--sheet-line); }
         .end-of-cut td { border-bottom: 4px solid #d32f2f !important; }
-        
         .out-of-duration { background: repeating-linear-gradient( -45deg, transparent, transparent 5px, var(--sheet-line) 5px, var(--sheet-line) 6px ) !important; }
         .out-of-duration input { color: var(--sheet-text); }
-
-        /* 描画制限解除ボタンのスタイル */
-        .load-more-container {
-            display: flex; align-items: center; justify-content: center; padding: 0 20px;
-        }
-        .btn-load-more {
-            background-color: #fff; border: 2px dashed #1890ff; color: #1890ff; padding: 20px 40px;
-            font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s;
-            height: 100%; display: flex; align-items: center; box-sizing: border-box;
-        }
-        .btn-load-more:hover { background-color: #e6f7ff; }
 
         /* =========================================
            仮想テンキー (タブレットモード)
@@ -185,7 +172,7 @@
             <input type="file" id="input-import" accept=".json" style="display: none;">
             <button id="btn-import" class="btn btn-file">読込</button>
             <button id="btn-export-pdf" class="btn btn-pdf">PDF書き出し</button>
-            <span id="pdf-loading" style="display:none; color:#d32f2f; font-size:12px; margin-left:10px;">PDF生成中...少々お待ちください</span>
+            <span id="pdf-loading" style="display:none; color:#d32f2f; font-size:12px; margin-left:10px;">PDF生成中...</span>
             
             <div style="flex-grow: 1; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
                 <button id="btn-toggle-tablet" class="btn btn-tablet">📱 タブレットモード: OFF</button>
@@ -295,7 +282,6 @@
     <script>
         const CONFIG = { fps: 24, secondsPerBlock: 3, blocksPerPage: 2, subDivisionFrame: 6, lsKey: 'timesheet_app_data' };
         const DEFAULT_COLORS = { bg: '#B8E090', line: '#30A850', text: '#000000', lip: '#dc0000' };
-        const MAX_RENDER_PAGES = 10; // 描画制限の初期値
 
         let state = {
             title: '', episode: '', part: '', animator: '',
@@ -304,11 +290,8 @@
             cuts: [], activeCutIndex: 0
         };
 
-        // 一時状態（保存しない）
         let isLipSyncMode = false; let isTabletMode = false;
         let lastCalculatedResult = { total: 0, breakdown: {}, warnings: [] }; 
-        // カットごとの描画制限解除フラグを保持する辞書
-        let cutRenderLimits = {};
 
         document.addEventListener('DOMContentLoaded', () => {
             loadState(); applyColorsToCSS(); initUI(); generateTimesheet(); 
@@ -346,24 +329,12 @@
                     if (parsed.gengaCols && !parsed.cellCols) parsed.cellCols = parsed.gengaCols;
                     if (!parsed.cellCols || parsed.cellCols.length === 0) parsed.cellCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
                     state = migrateParsedData(parsed);
-                } catch (e) {
-                    console.error("Data Parse Error");
-                }
+                } catch (e) {}
             } else {
                 state.cuts = [{ id: Date.now(), cutName: '1', durationSec: 6, durationFrame: 0, data: {}, lipData: {} }];
             }
-            // 読み込み時は制限解除フラグをリセット
-            cutRenderLimits = {};
         }
-
-        function saveState() { 
-            try {
-                localStorage.setItem(CONFIG.lsKey, JSON.stringify(state)); 
-                updateDougaCountDisplay(); 
-            } catch (e) {
-                alert("保存容量の限界に達しました。不要なカットを削除してください。");
-            }
-        }
+        function saveState() { localStorage.setItem(CONFIG.lsKey, JSON.stringify(state)); updateDougaCountDisplay(); }
 
         function initUI() {
             initUIValues();
@@ -373,25 +344,15 @@
             });
 
             document.getElementById('info-cut').addEventListener('change', (e) => { state.cuts[state.activeCutIndex].cutName = e.target.value; saveState(); updateCutSelector(); generateTimesheet(); });
-            document.getElementById('input-sec').addEventListener('change', (e) => { 
-                state.cuts[state.activeCutIndex].durationSec = parseInt(e.target.value, 10) || 0; 
-                cutRenderLimits[state.activeCutIndex] = false; // 尺変更で制限リセット
-                saveState(); generateTimesheet(); 
-            });
-            document.getElementById('input-frame').addEventListener('change', (e) => { 
-                state.cuts[state.activeCutIndex].durationFrame = parseInt(e.target.value, 10) || 0; 
-                cutRenderLimits[state.activeCutIndex] = false;
-                saveState(); generateTimesheet(); 
-            });
+            document.getElementById('input-sec').addEventListener('change', (e) => { state.cuts[state.activeCutIndex].durationSec = parseInt(e.target.value, 10) || 0; saveState(); generateTimesheet(); });
+            document.getElementById('input-frame').addEventListener('change', (e) => { state.cuts[state.activeCutIndex].durationFrame = parseInt(e.target.value, 10) || 0; saveState(); generateTimesheet(); });
 
             document.getElementById('select-active-cut').addEventListener('change', (e) => { state.activeCutIndex = parseInt(e.target.value, 10); saveState(); initUIValues(); });
             document.getElementById('btn-add-cut').addEventListener('click', () => {
                 const currentCut = state.cuts[state.activeCutIndex];
                 const newCutName = currentCut.cutName ? String(parseInt(currentCut.cutName, 10) + 1 || currentCut.cutName + '_new') : String(state.cuts.length + 1);
                 state.cuts.push({ id: Date.now(), cutName: newCutName, durationSec: currentCut.durationSec, durationFrame: currentCut.durationFrame, data: {}, lipData: {} });
-                state.activeCutIndex = state.cuts.length - 1; 
-                cutRenderLimits[state.activeCutIndex] = false;
-                saveState(); initUIValues(); generateTimesheet();
+                state.activeCutIndex = state.cuts.length - 1; saveState(); initUIValues(); generateTimesheet();
             });
 
             document.getElementById('btn-add-cell').addEventListener('click', () => { state.cellCols.push(getNextColName(state.cellCols)); saveState(); renderColumnInputs(); generateTimesheet(); });
@@ -444,10 +405,8 @@
             });
         }
 
-        // --- 描画制限付きシート生成 ---
         function generateTimesheet() {
             const container = document.getElementById('timesheet-container'); container.innerHTML = ''; 
-            
             state.cuts.forEach((cut, cutIndex) => {
                 const framesPerPage = CONFIG.fps * CONFIG.secondsPerBlock * CONFIG.blocksPerPage;
                 const totalFrames = (cut.durationSec * CONFIG.fps) + cut.durationFrame;
@@ -455,43 +414,20 @@
 
                 const cutDiv = document.createElement('div'); cutDiv.className = 'cut-container';
 
-                // 解除フラグが立っているか、10枚以下なら全描画。それ以外は10枚まで。
-                const isLimitRemoved = cutRenderLimits[cutIndex] === true;
-                const renderPages = isLimitRemoved ? totalPages : Math.min(totalPages, MAX_RENDER_PAGES);
-
-                for (let p = 0; p < renderPages; p++) {
+                for (let p = 0; p < totalPages; p++) {
                     const pageDiv = document.createElement('div'); pageDiv.className = 'page';
                     pageDiv.appendChild(createPageHeader(cut, p, totalPages));
-
                     const tablesDiv = document.createElement('div'); tablesDiv.className = 'page-tables';
                     for (let b = 0; b < CONFIG.blocksPerPage; b++) {
                         const startFrame = (p * framesPerPage) + (b * CONFIG.fps * CONFIG.secondsPerBlock) + 1;
                         const table = document.createElement('table');
-                        table.appendChild(createTableHeader()); 
-                        table.appendChild(createTableBody(cut, cutIndex, startFrame, CONFIG.fps * CONFIG.secondsPerBlock, totalFrames));
+                        table.appendChild(createTableHeader()); table.appendChild(createTableBody(cut, cutIndex, startFrame, CONFIG.fps * CONFIG.secondsPerBlock, totalFrames));
                         tablesDiv.appendChild(table);
                     }
                     pageDiv.appendChild(tablesDiv); cutDiv.appendChild(pageDiv);
                 }
-
-                // 描画制限がかかっている場合は解除ボタンを末尾に追加
-                if (!isLimitRemoved && totalPages > MAX_RENDER_PAGES) {
-                    const btnContainer = document.createElement('div');
-                    btnContainer.className = 'load-more-container';
-                    const btn = document.createElement('button');
-                    btn.className = 'btn-load-more';
-                    btn.textContent = `[+] 11枚目以降を描画する (全${totalPages}枚)`;
-                    btn.addEventListener('click', () => {
-                        cutRenderLimits[cutIndex] = true;
-                        generateTimesheet(); // 再描画
-                    });
-                    btnContainer.appendChild(btn);
-                    cutDiv.appendChild(btnContainer);
-                }
-
                 container.appendChild(cutDiv);
             });
-            
             updateVisuals();
             if (isTabletMode) { document.querySelectorAll('input.cell-input').forEach(inp => inp.setAttribute('inputmode', 'none')); }
         }
@@ -566,6 +502,7 @@
                         markDiv.textContent = cut.lipData[col.key][f]; td.appendChild(markDiv);
                     }
 
+                    // 軽いローカル更新
                     input.addEventListener('input', (e) => {
                         if (isLipSyncMode) { e.target.value = state.cuts[cutIndex].data[col.key]?.[f] || ''; return; }
                         if (!state.cuts[cutIndex].data[col.key]) state.cuts[cutIndex].data[col.key] = {};
@@ -573,6 +510,7 @@
                         adjustLocalVisuals(input);
                     });
 
+                    // 確定時に保存処理
                     input.addEventListener('change', (e) => {
                         if (isLipSyncMode) return;
                         let v = e.target.value; let c = false;
@@ -610,6 +548,7 @@
             });
         }
 
+        // --- カウント＆警告 ---
         function calculateDougaCount() {
             let totalCount = 0; let breakdown = {}; let warnings = [];
 
@@ -728,7 +667,7 @@
             document.getElementById('modal-breakdown').style.display = 'flex';
         }
 
-        // --- PDF・ファイル処理 ---
+        // --- モーダル・PDF等 ---
         function applyColorsToCSS() {
             const root = document.documentElement;
             root.style.setProperty('--sheet-bg', state.colors.bg); root.style.setProperty('--sheet-line', state.colors.line);
@@ -774,24 +713,15 @@
                 try {
                     let parsed = JSON.parse(event.target.result);
                     if (!parsed.cellCols) parsed.cellCols = parsed.gengaCols || ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-                    state = migrateParsedData(parsed); 
-                    cutRenderLimits = {}; // 制限リセット
-                    saveState(); applyColorsToCSS(); initUIValues(); generateTimesheet();
+                    state = migrateParsedData(parsed); saveState(); applyColorsToCSS(); initUIValues(); generateTimesheet();
                 } catch (err) { alert('読み込みに失敗しました。'); }
                 e.target.value = '';
             };
             reader.readAsText(file);
         }
 
-        // PDF生成時は、一旦すべての制限を解除して全描画してからキャプチャする
         function exportPDF() {
             const loadingMsg = document.getElementById('pdf-loading'); loadingMsg.style.display = 'inline';
-            
-            // 全カットの描画制限を一時的に解除
-            let originalLimits = { ...cutRenderLimits };
-            state.cuts.forEach((_, idx) => cutRenderLimits[idx] = true);
-            generateTimesheet(); // 全描画実行
-
             const printWrapper = document.createElement('div');
             printWrapper.style.position = 'absolute'; printWrapper.style.top = '0'; printWrapper.style.left = '-9999px';
             const printContainer = document.createElement('div'); printContainer.style.width = '1050px'; printContainer.style.display = 'flex'; printContainer.style.flexDirection = 'column';
@@ -814,13 +744,7 @@
                 margin: 10, filename: generateFileName('pdf'), image: { type: 'jpeg', quality: 1.0 },
                 html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a3', orientation: 'portrait' }, pagebreak: { mode: 'css', elements: '.page' }
             };
-            html2pdf().set(opt).from(printContainer).save().then(() => { 
-                document.body.removeChild(printWrapper); 
-                loadingMsg.style.display = 'none'; 
-                // 制限を元に戻して再描画
-                cutRenderLimits = originalLimits;
-                generateTimesheet();
-            });
+            html2pdf().set(opt).from(printContainer).save().then(() => { document.body.removeChild(printWrapper); loadingMsg.style.display = 'none'; });
         }
 
         // --- モード切替・移動処理 ---
@@ -862,6 +786,7 @@
             }
         }
 
+        // ★ 口パク専用のスマート移動 ★
         function moveFocusLipSync(f, k, cIdx, direction, currentEl) {
             const cut = state.cuts[cIdx];
             const totalFrames = (cut.durationSec * CONFIG.fps) + cut.durationFrame;
@@ -920,6 +845,8 @@
                         el.value += key;
                         if (!state.cuts[cIdx].data[k]) state.cuts[cIdx].data[k] = {};
                         state.cuts[cIdx].data[k][f] = el.value; adjustLocalVisuals(el); el.focus();
+                        clearTimeout(el.dataset.saveTimer);
+                        el.dataset.saveTimer = setTimeout(() => { saveState(); updateVisuals(); }, 300);
                     }
                 } else if (key === 'Enter' || key === 'ArrowDown') { 
                     if (isVirtual) { 
