@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>タイムシート入力アプリ</title>
+    <title>デジタルタイムシート</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         /* =========================================
-           カラー設定
+           カラー設定（モダンなデフォルト値）
         ========================================= */
         :root {
             --sheet-bg: #B8E090;
@@ -17,67 +17,196 @@
         }
 
         body {
-            font-family: sans-serif;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: #ececec;
+            background-color: #f3f4f6; /* 少し明るいグレーに */
             height: 100vh;
             display: flex;
             flex-direction: column;
             box-sizing: border-box;
         }
 
-        /* --- 操作パネル --- */
+        /* =========================================
+           操作パネル（モダンUI）
+        ========================================= */
         .controls-panel {
-            background: #fff; padding: 15px 20px; margin-bottom: 15px; border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 12px; flex-shrink: 0;
+            background: #ffffff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex-shrink: 0;
+        }
+
+        /* --- 折りたたみ設定エリア --- */
+        details.modern-details {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px 16px;
+        }
+        details.modern-details summary {
+            font-weight: bold;
+            color: #374151;
+            cursor: pointer;
+            outline: none;
+            list-style: none; /* Safari, Firefox用 */
+            user-select: none;
+        }
+        details.modern-details summary::-webkit-details-marker {
+            display: none; /* Chrome用 */
+        }
+        details.modern-details summary::before {
+            content: '▶';
+            display: inline-block;
+            width: 20px;
+            font-size: 12px;
+            transition: transform 0.2s ease;
+            color: #6b7280;
+        }
+        details.modern-details[open] summary::before {
+            transform: rotate(90deg);
         }
         
-        .control-group { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px dashed #ddd; }
-        .control-group:last-child { border-bottom: none; padding-bottom: 0; }
-        .control-group label { font-size: 14px; display: flex; align-items: center; gap: 5px; }
-        .control-group input[type="text"], .control-group input[type="number"], .control-group select {
-            padding: 4px; border: 1px solid #ccc; border-radius: 3px; font-size: 14px;
+        .details-content {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .control-group label {
+            font-size: 14px;
+            color: #4b5563;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .control-group input[type="text"], 
+        .control-group input[type="number"], 
+        .control-group select {
+            padding: 6px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .control-group input:focus, .control-group select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
         }
         .col-input { width: 35px; text-align: center; font-weight: bold; }
-
-        .btn { padding: 4px 10px; cursor: pointer; border: 1px solid #aaa; background: #f0f0f0; border-radius: 3px; transition: 0.1s; }
-        .btn:hover { background: #e0e0e0; }
-        .btn-file { background: #e6f7ff; border-color: #91d5ff; font-weight: bold; }
-        .btn-pdf { background: #fff1f0; border-color: #ffa39e; font-weight: bold; }
-        .btn-pdf:hover { background: #ffccc7; }
-        .btn-lipsync { background: #fff; border-color: #d32f2f; color: #d32f2f; font-weight: bold; }
-        .btn-lipsync.active { background: #d32f2f; color: #fff; }
-        .btn-tablet { background: #fff; border-color: #1890ff; color: #1890ff; font-weight: bold; }
-        .btn-tablet.active { background: #1890ff; color: #fff; }
-        .btn-reset { background: #fff; border-color: #888; color: #333; }
-        .btn-reset:hover { background: #ffe6e6; border-color: #ff4d4f; color: #ff4d4f; }
-        .btn-settings { background: #fafafa; border-color: #ccc; }
-
-        /* --- 動画枚数表示 --- */
-        .douga-count-display {
-            margin-left: auto; font-size: 16px; font-weight: bold; color: var(--sheet-line); 
-            border: 2px solid var(--sheet-line); padding: 4px 16px; border-radius: 4px; background: #eaf6eb; cursor: pointer; transition: 0.2s;
+        
+        /* 縦の区切り線 */
+        .vertical-divider {
+            border-left: 2px solid #e5e7eb;
+            height: 24px;
+            margin: 0 5px;
         }
-        .douga-count-display:hover { background: #cce8cf; }
+
+        /* --- アクションバー（独立配置エリア） --- */
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 5px;
+        }
+        .action-bar .left-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .action-bar .right-actions {
+            display: flex;
+            align-items: center;
+        }
+
+        /* --- 汎用ボタン --- */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn:active { transform: scale(0.98); }
+
+        .btn-sub { background: #f3f4f6; border-color: #d1d5db; color: #374151; padding: 6px 12px; }
+        .btn-sub:hover { background: #e5e7eb; }
+
+        /* モードボタン */
+        .btn-tablet { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
+        .btn-tablet.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+        .btn-lipsync { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+        .btn-lipsync.active { background: #dc2626; border-color: #dc2626; color: #fff; }
+        .btn-settings { background: #f9fafb; border-color: #d1d5db; color: #4b5563; }
+        .btn-settings:hover { background: #e5e7eb; }
+
+        /* 動画枚数表示 */
+        .douga-count-display {
+            font-size: 15px; font-weight: bold; color: var(--sheet-line); 
+            border: 2px solid var(--sheet-line); padding: 6px 20px; border-radius: 8px; 
+            background: #f0fdf4; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .douga-count-display:hover { background: #dcfce7; }
+        #display-douga-count { font-size: 22px; }
+
+        .pdf-loading-text { display:none; color:#dc2626; font-size:13px; font-weight: bold; }
 
         /* =========================================
            モーダル（ポップアップ）
         ========================================= */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.5); z-index: 20000; align-items: center; justify-content: center;
+            background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(2px); z-index: 20000; 
+            align-items: center; justify-content: center;
         }
         .modal-content {
-            background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); min-width: 350px; max-width: 500px; max-height: 80vh; overflow-y: auto;
+            background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+            min-width: 350px; max-width: 500px; max-height: 85vh; overflow-y: auto;
         }
-        .modal-title { margin-top: 0; margin-bottom: 15px; font-size: 18px; border-bottom: 2px solid #ddd; padding-bottom: 5px; }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-        .breakdown-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #eee; }
-        .breakdown-total { display: flex; justify-content: space-between; padding-top: 10px; margin-top: 10px; border-top: 2px solid #333; font-weight: bold; font-size: 16px; }
-        .warning-box { background: #fff2f0; border: 1px solid #ffccc7; padding: 10px; border-radius: 4px; margin-bottom: 15px; color: #cf1322; font-size: 13px; line-height: 1.5; }
-        .color-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-        .color-row input[type="color"] { cursor: pointer; }
+        .modal-title { margin-top: 0; margin-bottom: 20px; font-size: 18px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; color: #1f2937; }
+        
+        /* 設定モーダル内部 */
+        .settings-section { margin-bottom: 25px; }
+        .settings-section-title { font-size: 14px; color: #6b7280; margin: 0 0 12px 0; font-weight: bold; }
+        .settings-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        
+        .btn-outline { background: #fff; border-color: #d1d5db; color: #374151; }
+        .btn-outline:hover { background: #f3f4f6; }
+        .btn-outline-danger { background: #fff; border-color: #fca5a5; color: #dc2626; }
+        .btn-outline-danger:hover { background: #fef2f2; }
+        .btn-primary { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+        .btn-primary:hover { background: #2563eb; }
+
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; border-top: 1px solid #e5e7eb; padding-top: 15px; }
+        
+        .breakdown-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e5e7eb; color: #4b5563; }
+        .breakdown-total { display: flex; justify-content: space-between; padding-top: 10px; margin-top: 10px; border-top: 2px solid #374151; font-weight: bold; font-size: 16px; color: #1f2937; }
+        .warning-box { background: #fef2f2; border: 1px solid #fecaca; padding: 12px; border-radius: 8px; margin-bottom: 15px; color: #b91c1c; font-size: 13px; line-height: 1.5; }
+        
+        .color-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 14px; color: #4b5563; }
+        .color-row input[type="color"] { cursor: pointer; border: none; width: 30px; height: 30px; padding: 0; border-radius: 4px; overflow: hidden; }
 
         /* =========================================
            タイムシート用紙
@@ -93,7 +222,7 @@
             page-break-inside: avoid; break-inside: avoid;
         }
 
-        .page-header { display: flex; border: 2px solid var(--sheet-line); margin-bottom: 25px; }
+        .page-header { display: flex; border: 2px solid var(--sheet-line); margin-bottom: 25px; background: transparent; }
         .info-box { border-right: 1px solid var(--sheet-line); position: relative; padding: 0 8px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
         .info-box:last-child { border-right: none; }
         .info-label { position: absolute; top: 2px; left: 4px; font-size: 9px; font-weight: normal; color: var(--sheet-line); }
@@ -136,41 +265,36 @@
         .border-6frames td { border-bottom: 2px solid var(--sheet-line); }
         .border-1second td { border-bottom: 3px solid var(--sheet-line); }
         .end-of-cut td { border-bottom: 4px solid #d32f2f !important; }
-        
         .out-of-duration { background: repeating-linear-gradient( -45deg, transparent, transparent 5px, var(--sheet-line) 5px, var(--sheet-line) 6px ) !important; }
         .out-of-duration input { color: var(--sheet-text); }
 
-        /* 描画制限解除ボタンのスタイル */
-        .load-more-container {
-            display: flex; align-items: center; justify-content: center; padding: 0 20px;
-        }
+        .load-more-container { display: flex; align-items: center; justify-content: center; padding: 0 20px; }
         .btn-load-more {
-            background-color: #fff; border: 2px dashed #1890ff; color: #1890ff; padding: 20px 40px;
-            font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s;
-            height: 100%; display: flex; align-items: center; box-sizing: border-box;
+            background-color: #fff; border: 2px dashed #3b82f6; color: #3b82f6; padding: 20px 40px;
+            font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; height: 100%; display: flex; align-items: center; box-sizing: border-box;
         }
-        .btn-load-more:hover { background-color: #e6f7ff; }
+        .btn-load-more:hover { background-color: #eff6ff; }
 
         /* =========================================
            仮想テンキー (タブレットモード)
         ========================================= */
         #virtual-numpad {
-            display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: #d1d5db; padding: 8px;
-            box-shadow: 0 -4px 15px rgba(0,0,0,0.2); z-index: 10000; box-sizing: border-box;
+            display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: #d1d5db; padding: 12px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.2); z-index: 10000; box-sizing: border-box; border-top-left-radius: 16px; border-top-right-radius: 16px;
         }
         .numpad-grid {
-            display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(5, 50px);
-            gap: 6px; max-width: 450px; margin: 0 auto;
+            display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(5, 55px);
+            gap: 8px; max-width: 450px; margin: 0 auto;
         }
         .np-btn {
-            background: #fff; border: none; border-radius: 6px; font-size: 20px; font-weight: bold; color: #333;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer; user-select: none; transition: background 0.1s;
+            background: #fff; border: none; border-radius: 8px; font-size: 22px; font-weight: bold; color: #1f2937;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; user-select: none; transition: transform 0.05s, background 0.1s;
         }
-        .np-btn:active { background: #bbb; transform: translateY(1px); }
-        .np-btn-func { background: #e5e7eb; font-size: 16px; }
+        .np-btn:active { background: #e5e7eb; transform: translateY(2px); box-shadow: 0 0px 1px rgba(0,0,0,0.1); }
+        .np-btn-func { background: #f3f4f6; font-size: 18px; color: #4b5563; }
         .np-btn-action { background: #9ca3af; color: #fff; font-size: 16px; }
-        .np-btn-lip { font-size: 14px; border: 2px solid transparent; }
-        .np-btn-lip.active { border-color: #d32f2f; color: #d32f2f; background: #ffebee; }
+        .np-btn-lip { font-size: 14px; border: 2px solid transparent; color: #4b5563; }
+        .np-btn-lip.active { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
         .np-span-2-col { grid-column: span 2; }
         .np-span-2-row { grid-row: span 2; background: #3b82f6; color: #fff; }
         .np-span-2-row:active { background: #2563eb; }
@@ -179,52 +303,54 @@
 <body>
 
     <div class="controls-panel">
-        <div class="control-group">
-            <strong>データ管理:</strong>
-            <button id="btn-export" class="btn btn-file">保存 (.json)</button>
-            <input type="file" id="input-import" accept=".json" style="display: none;">
-            <button id="btn-import" class="btn btn-file">読込</button>
-            <button id="btn-export-pdf" class="btn btn-pdf">PDF書き出し</button>
-            <span id="pdf-loading" style="display:none; color:#d32f2f; font-size:12px; margin-left:10px;">PDF生成中...少々お待ちください</span>
-            
-            <div style="flex-grow: 1; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+        
+        <details class="modern-details" open>
+            <summary>📝 作品情報・シート設定</summary>
+            <div class="details-content">
+                <div class="control-group">
+                    <label>タイトル: <input type="text" id="info-title" style="width: 120px;"></label>
+                    <label>話数: <input type="text" id="info-episode" style="width: 40px;"></label>
+                    <label>パート: <input type="text" id="info-part" style="width: 40px;"></label>
+                    <label>原画: <input type="text" id="info-animator" style="width: 80px;"></label>
+                    
+                    <span class="vertical-divider"></span>
+                    
+                    <label><strong>編集中のカット:</strong>
+                        <select id="select-active-cut" style="width: 80px;"></select>
+                    </label>
+                    <button id="btn-add-cut" class="btn btn-sub">＋ 追加</button>
+                </div>
+
+                <div class="control-group">
+                    <label>Cut: <input type="text" id="info-cut" style="width: 60px;"></label>
+                    <span style="margin-left: 15px;"><strong>尺:</strong></span>
+                    <input type="number" id="input-sec" value="6" min="0" style="width: 40px;"> 秒 ＋
+                    <input type="number" id="input-frame" value="0" min="0" max="23" style="width: 40px;"> コマ
+                    
+                    <span class="vertical-divider"></span>
+                    
+                    <strong style="margin-left: 5px;">セル (原画/動画):</strong>
+                    <div id="cell-controls-container" style="display: flex; gap: 5px;"></div>
+                    <button id="btn-add-cell" class="btn btn-sub">＋</button>
+                    <button id="btn-remove-cell" class="btn btn-sub">－</button>
+                </div>
+            </div>
+        </details>
+
+        <div class="action-bar">
+            <div class="left-actions">
                 <button id="btn-toggle-tablet" class="btn btn-tablet">📱 タブレットモード: OFF</button>
-                <button id="btn-open-settings" class="btn btn-settings">⚙️ カラー設定</button>
-                <button id="btn-open-reset" class="btn btn-reset">🗑️ クリア</button>
+                <button id="btn-toggle-lipsync" class="btn btn-lipsync">👄 口パクモード: OFF (1:○, 2:△, 3:✕)</button>
+                <button id="btn-open-settings" class="btn btn-settings">⚙️ 設定 / データ管理</button>
+                <span id="pdf-loading" class="pdf-loading-text">PDF生成中...少々お待ちください</span>
+            </div>
+            <div class="right-actions">
                 <div id="btn-show-breakdown" class="douga-count-display" title="タップで内訳を表示">
-                    総動画枚数: <span id="display-douga-count" style="font-size: 24px;">0</span> 枚
+                    総動画枚数: <span id="display-douga-count">0</span> 枚
                 </div>
             </div>
         </div>
 
-        <div class="control-group">
-            <label>タイトル: <input type="text" id="info-title" style="width: 120px;"></label>
-            <label>話数: <input type="text" id="info-episode" style="width: 40px;"></label>
-            <label>パート: <input type="text" id="info-part" style="width: 40px;"></label>
-            <label>原画: <input type="text" id="info-animator" style="width: 80px;"></label>
-            
-            <span style="margin-left: 20px; border-left: 2px solid #ccc; padding-left: 15px;">
-                <label><strong>編集中のカット:</strong>
-                    <select id="select-active-cut" style="width: 80px;"></select>
-                </label>
-                <button id="btn-add-cut" class="btn" style="margin-left: 5px;">＋ カット追加</button>
-            </span>
-        </div>
-
-        <div class="control-group">
-            <label>Cut: <input type="text" id="info-cut" style="width: 60px;"></label>
-            <span style="margin-left: 15px;"><strong>尺:</strong></span>
-            <input type="number" id="input-sec" value="6" min="0" style="width: 40px;"> 秒 ＋
-            <input type="number" id="input-frame" value="0" min="0" max="23" style="width: 40px;"> コマ
-            
-            <strong style="margin-left: 20px;">セル (原画/動画):</strong>
-            <div id="cell-controls-container" style="display: flex; gap: 5px;"></div>
-            <button id="btn-add-cell" class="btn">＋</button>
-            <button id="btn-remove-cell" class="btn">－</button>
-            
-            <strong style="margin-left: 20px;">特殊入力:</strong>
-            <button id="btn-toggle-lipsync" class="btn btn-lipsync">口パクモード: OFF (1:○, 2:△, 3:✕)</button>
-        </div>
     </div>
 
     <div id="timesheet-wrapper">
@@ -257,37 +383,62 @@
 
     <div id="modal-breakdown" class="modal-overlay">
         <div class="modal-content">
-            <h3 class="modal-title">動画枚数 内訳</h3>
+            <h3 class="modal-title">📊 動画枚数 内訳</h3>
             <div id="warning-container" class="warning-box" style="display:none;"></div>
             <div id="breakdown-list"></div>
-            <div class="modal-actions"><button class="btn" onclick="closeModal('modal-breakdown')">閉じる</button></div>
+            <div class="modal-actions"><button class="btn btn-sub" onclick="closeModal('modal-breakdown')">閉じる</button></div>
         </div>
     </div>
 
-    <div id="modal-reset" class="modal-overlay">
+    <div id="modal-reset" class="modal-overlay" style="z-index: 20001;">
         <div class="modal-content">
-            <h3 class="modal-title" style="color: #d32f2f;">入力クリアの確認</h3>
-            <p>マス目の入力を全てリセットします。よろしいですか？<br><span style="font-size: 12px; color: #666;">※全カットの入力データが消去されます。</span></p>
-            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; margin-top: 15px; font-weight: bold;">
-                <input type="checkbox" id="check-keep-info" checked> タイトル・話数・原画名などの作品情報を残す
+            <h3 class="modal-title" style="color: #dc2626;">🗑️ 入力クリアの確認</h3>
+            <p style="color: #4b5563;">マス目の入力を全てリセットします。よろしいですか？<br><span style="font-size: 12px; color: #6b7280;">※全カットの入力データが消去されます。</span></p>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-top: 20px; font-weight: bold; color: #374151;">
+                <input type="checkbox" id="check-keep-info" checked style="width:16px; height:16px;"> 
+                タイトル・話数・原画名などの作品情報を残す
             </label>
             <div class="modal-actions">
-                <button class="btn" onclick="closeModal('modal-reset')">キャンセル</button>
-                <button class="btn" style="background: #ff4d4f; color: white; border-color: #ff4d4f;" onclick="executeReset()">リセット実行</button>
+                <button class="btn btn-outline" onclick="closeModal('modal-reset')">キャンセル</button>
+                <button class="btn btn-primary" style="background: #dc2626; border-color: #dc2626;" onclick="executeReset()">リセット実行</button>
             </div>
         </div>
     </div>
 
     <div id="modal-settings" class="modal-overlay">
         <div class="modal-content">
-            <h3 class="modal-title">カラー設定</h3>
-            <div class="color-row"><label>用紙の背景色:</label><input type="color" id="color-bg"></div>
-            <div class="color-row"><label>罫線・見出し色:</label><input type="color" id="color-line"></div>
-            <div class="color-row"><label>入力文字色:</label><input type="color" id="color-text"></div>
-            <div class="color-row"><label>口パク記号色:</label><input type="color" id="color-lip"></div>
+            <h3 class="modal-title">⚙️ 設定 / データ管理</h3>
+            
+            <div class="settings-section">
+                <h4 class="settings-section-title">💾 データ入出力</h4>
+                <div class="settings-actions">
+                    <button id="btn-export" class="btn btn-outline">保存 (.json)</button>
+                    <input type="file" id="input-import" accept=".json" style="display: none;">
+                    <button id="btn-import" class="btn btn-outline">読込</button>
+                    <button id="btn-export-pdf" class="btn btn-outline-danger">PDF書き出し</button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h4 class="settings-section-title">🗑️ データクリア</h4>
+                <div class="settings-actions">
+                    <button id="btn-open-reset" class="btn btn-outline-danger">入力データのクリア</button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h4 class="settings-section-title">🎨 カラー設定</h4>
+                <div class="color-row"><label>用紙の背景色:</label><input type="color" id="color-bg"></div>
+                <div class="color-row"><label>罫線・見出し色:</label><input type="color" id="color-line"></div>
+                <div class="color-row"><label>入力文字色:</label><input type="color" id="color-text"></div>
+                <div class="color-row"><label>口パク記号色:</label><input type="color" id="color-lip"></div>
+                <div style="text-align: right; margin-top: 15px;">
+                    <button class="btn btn-sub" onclick="resetColorsToDefault()">初期色に戻す</button>
+                </div>
+            </div>
+
             <div class="modal-actions">
-                <button class="btn" onclick="resetColorsToDefault()">初期色に戻す</button>
-                <button class="btn" style="background: #1890ff; color: white; border-color: #1890ff;" onclick="saveAndCloseSettings()">完了</button>
+                <button class="btn btn-primary" onclick="saveAndCloseSettings()">完了・閉じる</button>
             </div>
         </div>
     </div>
@@ -295,7 +446,7 @@
     <script>
         const CONFIG = { fps: 24, secondsPerBlock: 3, blocksPerPage: 2, subDivisionFrame: 6, lsKey: 'timesheet_app_data' };
         const DEFAULT_COLORS = { bg: '#B8E090', line: '#30A850', text: '#000000', lip: '#dc0000' };
-        const MAX_RENDER_PAGES = 10; // 描画制限の初期値
+        const MAX_RENDER_PAGES = 10; 
 
         let state = {
             title: '', episode: '', part: '', animator: '',
@@ -304,10 +455,8 @@
             cuts: [], activeCutIndex: 0
         };
 
-        // 一時状態（保存しない）
         let isLipSyncMode = false; let isTabletMode = false;
         let lastCalculatedResult = { total: 0, breakdown: {}, warnings: [] }; 
-        // カットごとの描画制限解除フラグを保持する辞書
         let cutRenderLimits = {};
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -346,23 +495,16 @@
                     if (parsed.gengaCols && !parsed.cellCols) parsed.cellCols = parsed.gengaCols;
                     if (!parsed.cellCols || parsed.cellCols.length === 0) parsed.cellCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
                     state = migrateParsedData(parsed);
-                } catch (e) {
-                    console.error("Data Parse Error");
-                }
+                } catch (e) {}
             } else {
                 state.cuts = [{ id: Date.now(), cutName: '1', durationSec: 6, durationFrame: 0, data: {}, lipData: {} }];
             }
-            // 読み込み時は制限解除フラグをリセット
             cutRenderLimits = {};
         }
 
         function saveState() { 
-            try {
-                localStorage.setItem(CONFIG.lsKey, JSON.stringify(state)); 
-                updateDougaCountDisplay(); 
-            } catch (e) {
-                alert("保存容量の限界に達しました。不要なカットを削除してください。");
-            }
+            try { localStorage.setItem(CONFIG.lsKey, JSON.stringify(state)); updateDougaCountDisplay(); 
+            } catch (e) { alert("保存容量の限界に達しました。不要なカットを削除してください。"); }
         }
 
         function initUI() {
@@ -375,13 +517,11 @@
             document.getElementById('info-cut').addEventListener('change', (e) => { state.cuts[state.activeCutIndex].cutName = e.target.value; saveState(); updateCutSelector(); generateTimesheet(); });
             document.getElementById('input-sec').addEventListener('change', (e) => { 
                 state.cuts[state.activeCutIndex].durationSec = parseInt(e.target.value, 10) || 0; 
-                cutRenderLimits[state.activeCutIndex] = false; // 尺変更で制限リセット
-                saveState(); generateTimesheet(); 
+                cutRenderLimits[state.activeCutIndex] = false; saveState(); generateTimesheet(); 
             });
             document.getElementById('input-frame').addEventListener('change', (e) => { 
                 state.cuts[state.activeCutIndex].durationFrame = parseInt(e.target.value, 10) || 0; 
-                cutRenderLimits[state.activeCutIndex] = false;
-                saveState(); generateTimesheet(); 
+                cutRenderLimits[state.activeCutIndex] = false; saveState(); generateTimesheet(); 
             });
 
             document.getElementById('select-active-cut').addEventListener('change', (e) => { state.activeCutIndex = parseInt(e.target.value, 10); saveState(); initUIValues(); });
@@ -389,20 +529,21 @@
                 const currentCut = state.cuts[state.activeCutIndex];
                 const newCutName = currentCut.cutName ? String(parseInt(currentCut.cutName, 10) + 1 || currentCut.cutName + '_new') : String(state.cuts.length + 1);
                 state.cuts.push({ id: Date.now(), cutName: newCutName, durationSec: currentCut.durationSec, durationFrame: currentCut.durationFrame, data: {}, lipData: {} });
-                state.activeCutIndex = state.cuts.length - 1; 
-                cutRenderLimits[state.activeCutIndex] = false;
+                state.activeCutIndex = state.cuts.length - 1; cutRenderLimits[state.activeCutIndex] = false;
                 saveState(); initUIValues(); generateTimesheet();
             });
 
             document.getElementById('btn-add-cell').addEventListener('click', () => { state.cellCols.push(getNextColName(state.cellCols)); saveState(); renderColumnInputs(); generateTimesheet(); });
             document.getElementById('btn-remove-cell').addEventListener('click', () => { if (state.cellCols.length > 1) { state.cellCols.pop(); saveState(); renderColumnInputs(); generateTimesheet(); } });
 
+            // 総合設定モーダル関連
+            document.getElementById('btn-open-settings').addEventListener('click', openSettingsModal);
             document.getElementById('btn-export').addEventListener('click', exportData);
             document.getElementById('btn-import').addEventListener('click', () => document.getElementById('input-import').click());
             document.getElementById('input-import').addEventListener('change', importData);
             document.getElementById('btn-export-pdf').addEventListener('click', exportPDF);
-            document.getElementById('btn-open-settings').addEventListener('click', openSettingsModal);
             document.getElementById('btn-open-reset').addEventListener('click', openResetModal);
+            
             document.getElementById('btn-show-breakdown').addEventListener('click', showBreakdownModal);
             document.getElementById('btn-toggle-lipsync').addEventListener('click', toggleLipSync);
             document.getElementById('btn-toggle-tablet').addEventListener('click', toggleTabletMode);
@@ -444,7 +585,6 @@
             });
         }
 
-        // --- 描画制限付きシート生成 ---
         function generateTimesheet() {
             const container = document.getElementById('timesheet-container'); container.innerHTML = ''; 
             
@@ -455,7 +595,6 @@
 
                 const cutDiv = document.createElement('div'); cutDiv.className = 'cut-container';
 
-                // 解除フラグが立っているか、10枚以下なら全描画。それ以外は10枚まで。
                 const isLimitRemoved = cutRenderLimits[cutIndex] === true;
                 const renderPages = isLimitRemoved ? totalPages : Math.min(totalPages, MAX_RENDER_PAGES);
 
@@ -474,21 +613,13 @@
                     pageDiv.appendChild(tablesDiv); cutDiv.appendChild(pageDiv);
                 }
 
-                // 描画制限がかかっている場合は解除ボタンを末尾に追加
                 if (!isLimitRemoved && totalPages > MAX_RENDER_PAGES) {
-                    const btnContainer = document.createElement('div');
-                    btnContainer.className = 'load-more-container';
-                    const btn = document.createElement('button');
-                    btn.className = 'btn-load-more';
+                    const btnContainer = document.createElement('div'); btnContainer.className = 'load-more-container';
+                    const btn = document.createElement('button'); btn.className = 'btn-load-more';
                     btn.textContent = `[+] 11枚目以降を描画する (全${totalPages}枚)`;
-                    btn.addEventListener('click', () => {
-                        cutRenderLimits[cutIndex] = true;
-                        generateTimesheet(); // 再描画
-                    });
-                    btnContainer.appendChild(btn);
-                    cutDiv.appendChild(btnContainer);
+                    btn.addEventListener('click', () => { cutRenderLimits[cutIndex] = true; generateTimesheet(); });
+                    btnContainer.appendChild(btn); cutDiv.appendChild(btnContainer);
                 }
-
                 container.appendChild(cutDiv);
             });
             
@@ -629,7 +760,7 @@
                     
                     for (let f = 1; f <= totalFrames; f++) {
                         let val = cut.data[targetKey]?.[f]?.trim() || '';
-                        if (val && val !== '/') {
+                        if (val && val !== '/' && val !== '✕') {
                             let lip = cut.lipData[targetKey]?.[f] || '';
                             validItems.push({ val, lip });
                             let num = parseInt(val, 10);
@@ -652,12 +783,12 @@
                     for (let i = 1; i <= normalMax; i++) { if (!uniqueNums.includes(i)) missing.push(i); }
 
                     let warnStrs = [];
-                    if (missing.length > 0) warnStrs.push(`<strong>${displayName}列</strong>：${missing.join(',')}が存在しません`);
+                    if (missing.length > 0) warnStrs.push(`<strong>${displayName}セル</strong>：${missing.join(',')}が存在しません`);
                     outliers.forEach(o => {
                         let loc = numToLoc[o];
                         let s = Math.floor(loc.frame / CONFIG.fps); let k = loc.frame % CONFIG.fps;
                         let cutPrefix = state.cuts.length > 1 ? `(Cut ${loc.cutName}) ` : '';
-                        warnStrs.push(`${cutPrefix}${s}秒+${k}コマの${displayName}${o}は外れ値です`);
+                        warnStrs.push(`${cutPrefix}${s}秒+${k}コマの${displayName}セル ${o} は外れ値です`);
                     });
                     if (warnStrs.length > 0) warnings.push(...warnStrs);
                 }
@@ -666,7 +797,7 @@
                 let currentStartKey = null; let currentInbetweens = []; let colCount = 0;
 
                 validItems.forEach(item => {
-                    const isKeyPose = (item.val !== '・' && item.val !== '✕');
+                    const isKeyPose = (item.val !== '・'); 
                     if (isKeyPose) {
                         if (!knownKeys.has(item.val)) { knownKeys.add(item.val); colCount++; }
                         if (currentStartKey !== null) {
@@ -703,7 +834,7 @@
                 countSpan.style.color = '#cf1322';
                 if (!document.getElementById('warn-icon')) countBtn.innerHTML += '<span id="warn-icon"> ⚠️</span>';
             } else {
-                countBtn.style.color = 'var(--sheet-line)'; countBtn.style.borderColor = 'var(--sheet-line)'; countBtn.style.background = '#eaf6eb';
+                countBtn.style.color = 'var(--sheet-line)'; countBtn.style.borderColor = 'var(--sheet-line)'; countBtn.style.background = '#f0fdf4';
                 countSpan.style.color = 'var(--sheet-line)';
                 const icon = document.getElementById('warn-icon'); if (icon) icon.remove();
             }
@@ -720,7 +851,7 @@
             } else { warnDiv.style.display = 'none'; }
 
             if (keys.length === 0) {
-                listDiv.innerHTML = '<p style="color:#666; text-align:center;">入力データがありません</p>';
+                listDiv.innerHTML = '<p style="color:#6b7280; text-align:center;">入力データがありません</p>';
             } else {
                 keys.forEach(key => { listDiv.innerHTML += `<div class="breakdown-row"><span>${key}</span><span>${breakdown[key]} 枚</span></div>`; });
                 listDiv.innerHTML += `<div class="breakdown-total"><span>計</span><span>${lastCalculatedResult.total} 枚</span></div>`;
@@ -728,7 +859,7 @@
             document.getElementById('modal-breakdown').style.display = 'flex';
         }
 
-        // --- PDF・ファイル処理 ---
+        // --- モーダル・PDF等 ---
         function applyColorsToCSS() {
             const root = document.documentElement;
             root.style.setProperty('--sheet-bg', state.colors.bg); root.style.setProperty('--sheet-line', state.colors.line);
@@ -753,7 +884,8 @@
             const keepInfo = document.getElementById('check-keep-info').checked;
             state.cuts.forEach(cut => { cut.data = {}; cut.lipData = {}; });
             if (!keepInfo) { state.title = ''; state.episode = ''; state.part = ''; state.animator = ''; state.cuts = [{ id: Date.now(), cutName: '1', durationSec: 6, durationFrame: 0, data: {}, lipData: {} }]; state.activeCutIndex = 0; }
-            saveState(); initUIValues(); generateTimesheet(); closeModal('modal-reset');
+            saveState(); initUIValues(); generateTimesheet(); 
+            closeModal('modal-reset'); closeModal('modal-settings');
         }
         function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
@@ -775,22 +907,20 @@
                     let parsed = JSON.parse(event.target.result);
                     if (!parsed.cellCols) parsed.cellCols = parsed.gengaCols || ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
                     state = migrateParsedData(parsed); 
-                    cutRenderLimits = {}; // 制限リセット
-                    saveState(); applyColorsToCSS(); initUIValues(); generateTimesheet();
+                    cutRenderLimits = {}; saveState(); applyColorsToCSS(); initUIValues(); generateTimesheet();
+                    closeModal('modal-settings');
                 } catch (err) { alert('読み込みに失敗しました。'); }
                 e.target.value = '';
             };
             reader.readAsText(file);
         }
 
-        // PDF生成時は、一旦すべての制限を解除して全描画してからキャプチャする
         function exportPDF() {
             const loadingMsg = document.getElementById('pdf-loading'); loadingMsg.style.display = 'inline';
             
-            // 全カットの描画制限を一時的に解除
             let originalLimits = { ...cutRenderLimits };
             state.cuts.forEach((_, idx) => cutRenderLimits[idx] = true);
-            generateTimesheet(); // 全描画実行
+            generateTimesheet(); 
 
             const printWrapper = document.createElement('div');
             printWrapper.style.position = 'absolute'; printWrapper.style.top = '0'; printWrapper.style.left = '-9999px';
@@ -815,11 +945,8 @@
                 html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a3', orientation: 'portrait' }, pagebreak: { mode: 'css', elements: '.page' }
             };
             html2pdf().set(opt).from(printContainer).save().then(() => { 
-                document.body.removeChild(printWrapper); 
-                loadingMsg.style.display = 'none'; 
-                // 制限を元に戻して再描画
-                cutRenderLimits = originalLimits;
-                generateTimesheet();
+                document.body.removeChild(printWrapper); loadingMsg.style.display = 'none'; 
+                cutRenderLimits = originalLimits; generateTimesheet();
             });
         }
 
@@ -828,10 +955,10 @@
             isLipSyncMode = !isLipSyncMode;
             const btnMain = document.getElementById('btn-toggle-lipsync'); const btnNum = document.querySelector('.np-btn-lip');
             if (isLipSyncMode) {
-                btnMain.textContent = '口パクモード: ON (1:○, 2:△, 3:✕)'; btnMain.classList.add('active'); if (btnNum) btnNum.classList.add('active');
+                btnMain.textContent = '👄 口パクモード: ON (1:○, 2:△, 3:✕)'; btnMain.classList.add('active'); if (btnNum) btnNum.classList.add('active');
                 document.body.classList.add('lip-sync-mode');
             } else {
-                btnMain.textContent = '口パクモード: OFF (1:○, 2:△, 3:✕)'; btnMain.classList.remove('active'); if (btnNum) btnNum.classList.remove('active');
+                btnMain.textContent = '👄 口パクモード: OFF (1:○, 2:△, 3:✕)'; btnMain.classList.remove('active'); if (btnNum) btnNum.classList.remove('active');
                 document.body.classList.remove('lip-sync-mode');
             }
         }
@@ -875,7 +1002,7 @@
             let nextF = f + step;
             while (nextF >= 1 && nextF <= totalFrames) {
                 let val = cut.data[k] && cut.data[k][nextF] ? cut.data[k][nextF].trim() : '';
-                if (val !== '' && val !== '/') {
+                if (val !== '' && val !== '/' && val !== '✕') {
                     const nextEl = document.querySelector(`input[data-cut="${cIdx}"][data-frame="${nextF}"][data-colkey="${k}"]`);
                     if (nextEl && !nextEl.disabled) { nextEl.focus(); return; }
                 }
